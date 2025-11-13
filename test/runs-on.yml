@@ -1,7 +1,7 @@
 runners:
   test-runner:
     ram: 8
-    family: t3.*
+    family: t9.*
     image: ubuntu24-full-x64
 
 pools:
@@ -11,4 +11,3 @@ pools:
       - name: default
         hot: 1
         stopped: 2
-

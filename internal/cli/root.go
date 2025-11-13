@@ -46,7 +46,7 @@ func NewRootCmd(stack *Stack) *cobra.Command {
 		NewConnectCmd(stack),
 		NewInterruptCmd(stack),
 		NewStackCmd(stack),
-		NewLintCmd(),
+		NewLintCmd(stack.cfg), // Lint only needs AWS config, not full Stack
 		NewVersionCmd(),
 	)
 

@@ -61,7 +61,7 @@ pools:
 
 func TestLintFile_NonexistentFile(t *testing.T) {
 	ctx := context.Background()
-	err := lintFile(ctx, "/nonexistent/file.yml", "text")
+	err := lintFile(ctx, "/nonexistent/file.yml", "text", nil)
 
 	if err == nil {
 		t.Error("Expected error for nonexistent file")
@@ -95,7 +95,7 @@ func TestLintAllFiles_NoFiles(t *testing.T) {
 	os.Stdout = w
 
 	ctx := context.Background()
-	err := lintAllFiles(ctx, "text")
+	err := lintAllFiles(ctx, "text", nil)
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -155,7 +155,7 @@ pools:
 	os.Stdout = w
 
 	ctx := context.Background()
-	err := lintAllFiles(ctx, "text")
+	err := lintAllFiles(ctx, "text", nil)
 
 	w.Close()
 	os.Stdout = oldStdout

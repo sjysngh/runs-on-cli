@@ -1,15 +1,15 @@
-name: 'Setup RunsOn CLI'
-description: 'Downloads and installs the RunsOn CLI (roc) on GitHub runners'
-author: 'RunsOn'
+name: "Setup RunsOn CLI"
+description: "Downloads and installs the RunsOn CLI (roc) on GitHub runners"
+author: "RunsOn"
 
 inputs:
   version:
-    description: 'Version of RunsOn CLI to install (e.g., v0.1.7). Defaults to latest.'
+    description: "Version of RunsOn CLI to install (e.g., v0.1.7). Defaults to latest."
     required: false
-    default: 'latest'
+    default: "latest"
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Install RunsOn CLI
       shell: bash
@@ -18,4 +18,3 @@ runs:
         # Convert Windows paths to Unix-style for bash compatibility
         ACTION_PATH="${ACTION_PATH//\\//}"
         "${ACTION_PATH}/install.sh" ${{ inputs.version }}
-

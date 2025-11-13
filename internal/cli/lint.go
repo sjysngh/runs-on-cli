@@ -7,15 +7,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"roc/internal/aws"
 	"roc/internal/version"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/runs-on/config/pkg/validate"
 	"github.com/spf13/cobra"
 )
 
-func NewLintCmd() *cobra.Command {
+func NewLintCmd(awsConfig awssdk.Config) *cobra.Command {
 	var format string
 	var stdin bool
+	var skipAWS bool
 
 	cmd := &cobra.Command{
 		Use:   "lint [flags] [file]",
@@ -41,22 +44,32 @@ The validator supports YAML anchors and will automatically expand them during va
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
+			// Create validator options with AWS instance family validator unless skipped
+			var opts *validate.ValidateOptions
+			if !skipAWS {
+				validator := aws.NewEC2InstanceFamilyValidator(awsConfig)
+				opts = &validate.ValidateOptions{
+					InstanceFamilyValidator: validator,
+				}
+			}
+
 			if stdin {
-				return lintStdin(ctx, format)
+				return lintStdin(ctx, format, opts)
 			}
 
 			if len(args) > 0 {
 				// Validate single file
-				return lintFile(ctx, args[0], format)
+				return lintFile(ctx, args[0], format, opts)
 			}
 
 			// Find and validate all runs-on.yml files
-			return lintAllFiles(ctx, format)
+			return lintAllFiles(ctx, format, opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&format, "format", "f", "text", "Output format: text, json, or sarif")
 	cmd.Flags().BoolVar(&stdin, "stdin", false, "Read from stdin instead of file")
+	cmd.Flags().BoolVar(&skipAWS, "skip-aws", false, "Skip AWS API validation (useful when AWS credentials are unavailable)")
 
 	// Enable file path completion for the file argument
 	cmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -80,7 +93,9 @@ The validator supports YAML anchors and will automatically expand them during va
 	return cmd
 }
 
-func lintStdin(ctx context.Context, format string) error {
+func lintStdin(ctx context.Context, format string, opts *validate.ValidateOptions) error {
+	// Note: ValidateReader doesn't support options yet, so we use the basic version
+	// TODO: Add ValidateReaderWithOptions if needed in the future
 	diags, err := validate.ValidateReader(ctx, os.Stdin, "<stdin>")
 	if err != nil {
 		return fmt.Errorf("validation failed: %w", err)
@@ -89,8 +104,17 @@ func lintStdin(ctx context.Context, format string) error {
 	return outputLintResults(diags, "<stdin>", format)
 }
 
-func lintFile(ctx context.Context, filePath string, format string) error {
-	diags, err := validate.ValidateFile(ctx, filePath)
+func lintFile(ctx context.Context, filePath string, format string, opts *validate.ValidateOptions) error {
+	var diags []validate.Diagnostic
+	var err error
+
+	// Use ValidateFileWithOptions if opts provided, otherwise use basic ValidateFile
+	if opts != nil {
+		diags, err = validate.ValidateFileWithOptions(ctx, filePath, opts)
+	} else {
+		diags, err = validate.ValidateFile(ctx, filePath)
+	}
+
 	if err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
@@ -98,7 +122,7 @@ func lintFile(ctx context.Context, filePath string, format string) error {
 	return outputLintResults(diags, filePath, format)
 }
 
-func lintAllFiles(ctx context.Context, format string) error {
+func lintAllFiles(ctx context.Context, format string, opts *validate.ValidateOptions) error {
 	var files []string
 	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -122,7 +146,15 @@ func lintAllFiles(ctx context.Context, format string) error {
 	var allResults []fileResult
 
 	for _, file := range files {
-		diags, err := validate.ValidateFile(ctx, file)
+		var diags []validate.Diagnostic
+		var err error
+
+		// Use ValidateFileWithOptions if opts provided, otherwise use basic ValidateFile
+		if opts != nil {
+			diags, err = validate.ValidateFileWithOptions(ctx, file, opts)
+		} else {
+			diags, err = validate.ValidateFile(ctx, file)
+		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error validating %s: %v\n", file, err)
 			allResults = append(allResults, fileResult{

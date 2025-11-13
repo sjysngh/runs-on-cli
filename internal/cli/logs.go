@@ -664,7 +664,7 @@ func NewStackLogsCmd(stack *Stack) *cobra.Command {
 		Use:   "logs",
 		Short: "Stream all RunsOn application logs from CloudWatch",
 		Long: `Stream all RunsOn application logs from the CloudWatch log group.
-		
+
 This command streams all application logs from the RunsOn service, not filtered
 by specific jobs. Use this to monitor overall service activity and troubleshoot
 system-wide issues.`,
